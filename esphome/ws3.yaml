@@ -1,0 +1,149 @@
+##
+# A simple bridge between a cheap chineese WS3 weather station and MQTT.
+# Powered by ESPHome and intended for HomeAssistant integration (via MQTT)
+#
+# The heavy lifting is done in the ws3.h file
+# This YAML file configures ESPHome to use the outputs from ws3.h
+#
+# Karl Quinsland, 2019.
+# Free to use for any non-commercial purposes.
+# Commercial use requires express written consent from me.
+##
+# Change the values here, or the lookup key in your secrets.yaml file
+# See: https://esphome.io/guides/faq.html#how-do-i-use-my-home-assistant-secrets-yaml
+substitutions:
+  # WIFI
+  wifi_name: !secret wifi_ws3_ssid
+  wifi_pass: !secret wifi_ws3_pass
+
+  # MQTT
+  mqtt_host: !secret mqtt_host
+  mqtt_user: !secret mqtt_user
+  mqtt_pass: !secret mqtt_pass
+
+  # OTA/Updates
+  ota_pass: !secret ota_pass
+
+  # Displayed in HA frontend
+  friendly_name: "WS3 Bridge"
+  friendly_short: "WS3"
+
+esphome:
+  name: ws3
+  platform: ESP32
+  # WeMos does not make a esp32 module in the d1 MINI form factor but that's
+  # what i have. It's a d1 mini pin compatable kit from china. ~$6/board makes it
+  # a wonderfuly cheap/powerful board for most ESPHome devices
+  #
+  # See: https://www.aliexpress.com/item/MH-ET-LIVE-ESP32-MINI-KIT-WiFi-Bluetooth-Internet-of-Things-development-board-based-ESP8266-Fully/32819107932.html
+  ##
+  # See: https://docs.platformio.org/en/latest/boards/espressif32/esp32doit-devkit-v1.html
+  board: mhetesp32minikit
+  # Components required for integration into the ESPHome framework
+  # See: https://esphome.io/custom/custom_component.html
+  includes:
+    - ws3.h
+
+# See: https://esphome.io/components/wifi.html
+wifi:
+  ssid: ${wifi_name}
+  password: ${wifi_pass}
+
+# Enable logging
+logger:
+
+# Enable status LED; very low resolution logging :)
+# See: https://esphome.io/components/status_led.html
+status_led:
+  # Wemos uses GPIO2 for the built in LED
+  pin:
+    number: GPIO2
+    # It does not need an inversion (active low)
+    inverted: false
+
+ota:
+  # See: https://esphome.io/components/ota.html
+  password: ${ota_pass}
+
+# See: https://esphome.io/components/mqtt.html
+mqtt:
+  broker: ${mqtt_host}
+  username: ${mqtt_user}
+  password: ${mqtt_pass}
+
+# See: https://esphome.io/components/web_server.html
+# Simple debug log + states + FW upload
+web_server:
+  port: 80
+
+uart:
+  # The ESP32 has 3 UARTS; UART2 is ideal for supporting the WS3
+  # UART2: GPIO17 is espRX and GPIO16 is espTX
+  id: uart_bus
+  tx_pin: GPIO16
+  rx_pin: GPIO17
+  # The WS3 supports either 2400 or 9600 baud. Default config is 2400 baud.
+  baud_rate: 2400
+
+binary_sensor:
+  # A "connected?" status sensor that - as long as sensor + mqtt + HA are working -
+  #   will always display "true". Allows for easy detection of sensor failure from HA
+  # See: https://esphome.io/components/binary_sensor/status.html
+  - platform: status
+    name: "${friendly_name} Status"
+
+sensor:
+  # A measurement that is useful for detecting wifi reception problems
+  # Make sure to set HA to retain this data for a very short time!
+  #
+  # See: https://community.home-assistant.io/t/iron-gate-sensor/97656/6
+  - platform: wifi_signal
+    name: "${friendly_name} Wifi Signal"
+    update_interval: 5s
+    filters:
+      - sliding_window_moving_average:
+          # hold 15 measurements, taken every 5 seconds
+          window_size: 15
+          # every 15 seconds, send the updated result..
+          send_every: 15
+
+  # See: https://esphome.io/custom/custom_component.html
+  - platform: custom
+    lambda: |-
+      auto ws3 = new WS3(id(uart_bus));
+      App.register_component(ws3);
+      return {ws3->temperature_sensor, ws3->pressure_sensor, ws3->humidity_sensor, ws3->wind_speed_current_sensor,ws3->wind_speed_peak_5m_sensor,ws3->wind_direction_sensor,ws3->rain_fall_1h_sensor, ws3->rain_fall_24h_sensor};
+
+    sensors:
+      - name: "${friendly_short} Temperature"
+        unit_of_measurement: °F
+        accuracy_decimals: 2
+      - name: "{friendly_short} Air Pressure"
+        unit_of_measurement: hPa
+        accuracy_decimals: 2
+      - name: "{friendly_short} Humidity"
+        unit_of_measurement: hPa
+        accuracy_decimals: 2
+      ##
+      # NOTE: In testing, this sensor almost ALWAYS displays 0 unless there's a particurally strong wind at EXACTLY
+      # the same time that a packet is being sent out over the UART. In *thousands* of packets, i have only seen this number
+      # be anything other than 0 a handful of times. The "peak wind speed over the last 5 min" sensor is MUCH more useful
+      # but this is included here in the event that the data is some how useful. It's trivial to "hide" a usless data stream
+      # in the HA UI, so do that first and then disable this sensor by commenting it out and adjusting the return() statement
+      # from the lambda if you must.
+      ##
+      - name: "{friendly_short} Wind Speed"
+        unit_of_measurement: mph
+        accuracy_decimals: 2
+      - name: "{friendly_short} Wind Speed (Peak; 5min)"
+        unit_of_measurement: mph
+        accuracy_decimals: 2
+      - name: "{friendly_short} Wind Direction Sensor"
+        unit_of_measurement: °
+        accuracy_decimals: 1
+      - name: "{friendly_short} Rainfall (Sum; 1hr)"
+        unit_of_measurement: inches
+        accuracy_decimals: 2
+      - name: "{friendly_short} Rainfall (Sum; 24hr)"
+        unit_of_measurement: inches
+        accuracy_decimals: 2
