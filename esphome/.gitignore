@@ -1,0 +1,5 @@
+##
+# ignore various ESPHome artifacts
+##
+.esphome/*
+ws3/*
