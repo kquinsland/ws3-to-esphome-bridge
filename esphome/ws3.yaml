@@ -1,5 +1,5 @@
 ##
-# A simple bridge between a cheap chineese WS3 weather station and MQTT.
+# A simple bridge between a cheap chinese WS3 weather station and MQTT.
 # Powered by ESPHome and intended for HomeAssistant integration (via MQTT)
 #
 # The heavy lifting is done in the ws3.h file
@@ -32,8 +32,8 @@ esphome:
   name: ws3
   platform: ESP32
   # WeMos does not make a esp32 module in the d1 MINI form factor but that's
-  # what i have. It's a d1 mini pin compatable kit from china. ~$6/board makes it
-  # a wonderfuly cheap/powerful board for most ESPHome devices
+  # what i have. It's a d1 mini pin compatible kit from china. ~$6/board makes it
+  # a wonderfully cheap/powerful board for most ESPHome devices
   #
   # See: https://www.aliexpress.com/item/MH-ET-LIVE-ESP32-MINI-KIT-WiFi-Bluetooth-Internet-of-Things-development-board-based-ESP8266-Fully/32819107932.html
   ##
@@ -112,38 +112,81 @@ sensor:
     lambda: |-
       auto ws3 = new WS3(id(uart_bus));
       App.register_component(ws3);
-      return {ws3->temperature_sensor, ws3->pressure_sensor, ws3->humidity_sensor, ws3->wind_speed_current_sensor,ws3->wind_speed_peak_5m_sensor,ws3->wind_direction_sensor,ws3->rain_fall_1h_sensor, ws3->rain_fall_24h_sensor};
+      return {
+        ws3->temperature_sensor, 
+        ws3->pressure_sensor, 
+        ws3->humidity_sensor, 
+        ws3->wind_speed_current_sensor,
+        ws3->wind_speed_peak_5m_sensor,
+        ws3->wind_direction_sensor,
+        ws3->rain_fall_1h_sensor, 
+        ws3->rain_fall_24h_sensor,
+
+        // Comment out the fields named `particles_` if not using the PM2.5 sensor
+        ws3->particles_03um,
+        ws3->particles_05um,
+        ws3->particles_10um,
+        ws3->particles_25um,
+        ws3->particles_50um,
+        ws3->particles_100um,
+        
+      };
 
     sensors:
       - name: "${friendly_short} Temperature"
         unit_of_measurement: °F
         accuracy_decimals: 2
-      - name: "{friendly_short} Air Pressure"
+        # Mark the value as 'none/unknown' after 5min
+        expire_after: 5min
+      - name: "${friendly_short} Air Pressure"
         unit_of_measurement: hPa
         accuracy_decimals: 2
-      - name: "{friendly_short} Humidity"
-        unit_of_measurement: hPa
+        expire_after: 5min
+      - name: "${friendly_short} Relative Humidity"
+        unit_of_measurement: "%"
         accuracy_decimals: 2
-      ##
-      # NOTE: In testing, this sensor almost ALWAYS displays 0 unless there's a particurally strong wind at EXACTLY
-      # the same time that a packet is being sent out over the UART. In *thousands* of packets, i have only seen this number
-      # be anything other than 0 a handful of times. The "peak wind speed over the last 5 min" sensor is MUCH more useful
-      # but this is included here in the event that the data is some how useful. It's trivial to "hide" a usless data stream
-      # in the HA UI, so do that first and then disable this sensor by commenting it out and adjusting the return() statement
-      # from the lambda if you must.
-      ##
-      - name: "{friendly_short} Wind Speed"
+        expire_after: 5min
+      - name: "${friendly_short} Wind Speed"
         unit_of_measurement: mph
         accuracy_decimals: 2
-      - name: "{friendly_short} Wind Speed (Peak; 5min)"
+        expire_after: 5min
+      - name: "${friendly_short} Wind Speed (Peak; 5min)"
         unit_of_measurement: mph
         accuracy_decimals: 2
-      - name: "{friendly_short} Wind Direction Sensor"
+        expire_after: 5min
+      - name: "${friendly_short} Wind Direction Sensor"
         unit_of_measurement: °
         accuracy_decimals: 1
-      - name: "{friendly_short} Rainfall (Sum; 1hr)"
+        expire_after: 5min
+      - name: "${friendly_short} Rainfall (Sum; 1hr)"
         unit_of_measurement: inches
         accuracy_decimals: 2
-      - name: "{friendly_short} Rainfall (Sum; 24hr)"
+        expire_after: 5min
+      - name: "${friendly_short} Rainfall (Sum; 24hr)"
         unit_of_measurement: inches
         accuracy_decimals: 2
+        expire_after: 5min
+      ##
+      # PM 2.5
+      # Note: HomeAssistant will display the values as a series of colored blocks rather than a graph if there's no units indicated
+      # However, we can default to 0 accuracy_decimals as the value we're returning is an int
+      ##
+      - name: "${friendly_short} Air Particles > 0.3μm"
+        expire_after: 5min
+        unit_of_measurement: particles
+      - name: "${friendly_short} Air Particles > 0.5μm"
+        expire_after: 5min
+        unit_of_measurement: particles / .1L
+      # As in, the count of Particles > 1.0um / 0.1L air
+      - name: "${friendly_short} Air Particles > 1.0μm"
+        expire_after: 5min
+        unit_of_measurement: particles
+      - name: "${friendly_short} Air Particles > 2.5μm"
+        expire_after: 5min
+        unit_of_measurement: particles
+      - name: "${friendly_short} Air Particles > 5.0μm"
+        expire_after: 5min
+        unit_of_measurement: particles
+      - name: "${friendly_short} Air Particles > 10.0μm"
+        expire_after: 5min
+        unit_of_measurement: particles
