@@ -23,11 +23,11 @@ C/C++ is not my preferred language, so the code "works" but could probably be op
 
 A more detailed writeup and a basic 3d printable enclosure for outdoor deployments is written up [here](//TODO:link).
 
-In short, the WS3 supports a specific [particulate matter sensor](//TODO:Link). Making a cable to interface the sensor with the WS3 module isn't too much . I've added support for this sensor and updated the code.
+In short, the WS3 supports a specific [particulate matter sensor](https://rover.ebay.com/rover/1/711-53200-19255-0/1?mpre=https%3A%2F%2Fwww.ebay.com%2Fitm%2FDigital-Universal-Particle-Concentration-Laser-Sensor-PMS5003-PM1-0-PM2-5-PM10%2F254616699639&campid=5338734064&toolid=10001&customid=) (Note: Affiliate link; thanks for your support!). Making a cable to interface the sensor with the WS3 module isn't too much work and is discussed in the detailed writeup linked above. 
 
-Just set the `SUPPORT_PM25_SENSOR` to `1` and run `esphome your_file.yaml run --upload-port ...` to build and upload a new FW version.
+I've updated the custom_component for the WS3 station to support the sensor. Just set the `SUPPORT_PM25_SENSOR` to `1` and run `esphome your_file.yaml run --upload-port ...` to build and upload a new FW version.
 
-While hacking on the additional support, these existing repos were helpful in figuring out which bytes from the PM2.5 was sending me:
+While hacking on the additional support, these existing repos were helpful in figuring out which values from the PM2.5 the WS3 was forwarding:
 
 - https://github.com/rpanfili/airQualityMeter
 - https://github.com/i3water/Blinker_PMSX003ST/blob/master/src/BLINKER_PMSX003ST.cpp
