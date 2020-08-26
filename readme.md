@@ -17,3 +17,19 @@ I didn't want to spend much time trying to reverse engineer the sensors or figur
 
 
 C/C++ is not my preferred language, so the code "works" but could probably be optimized in quite a few ways. Pull Requests are accepted!
+
+
+## Adding support for Particulate Sensors
+
+A more detailed writeup and a basic 3d printable enclosure for outdoor deployments is written up [here](//TODO:link).
+
+In short, the WS3 supports a specific [particulate matter sensor](//TODO:Link). Making a cable to interface the sensor with the WS3 module isn't too much . I've added support for this sensor and updated the code.
+
+Just set the `SUPPORT_PM25_SENSOR` to `1` and run `esphome your_file.yaml run --upload-port ...` to build and upload a new FW version.
+
+While hacking on the additional support, these existing repos were helpful in figuring out which bytes from the PM2.5 was sending me:
+
+- https://github.com/rpanfili/airQualityMeter
+- https://github.com/i3water/Blinker_PMSX003ST/blob/master/src/BLINKER_PMSX003ST.cpp
+
+The [datasheet](docs/PMS5003ST_Datasheet.pdf) has been included for reference.
